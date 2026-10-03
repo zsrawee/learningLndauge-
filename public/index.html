@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>معلّم الصوت — Voice Tutor</title>
+<link rel="stylesheet" href="/style.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>" />
+</head>
+<body>
+
+<main>
+  <header class="hero">
+    <h1>🎧 معلّم الصوت</h1>
+    <p>ارفع مقطعاً باللغة التي تتعلمها، وحمّل نسخة مشروحة.</p>
+  </header>
+
+  <!-- ============================ the one thing ============================ -->
+  <section class="card" id="uploadCard">
+    <div id="drop" class="drop">
+      <input type="file" id="file" accept="audio/*,video/mp4" hidden />
+      <div class="drop-icon">🎵</div>
+      <p class="drop-main">اسحب المقطع هنا</p>
+      <p class="drop-or">أو</p>
+      <button class="btn primary" id="pick">اختر ملفاً</button>
+      <p class="drop-hint">MP3 · WAV · M4A · OGG · MP4</p>
+    </div>
+
+    <div class="run" id="run" hidden>
+      <div class="spinner"></div>
+      <p class="run-stage" id="runStage">جارٍ التحضير…</p>
+      <p class="run-detail" id="runDetail"></p>
+      <div class="bar"><div id="bar"></div></div>
+      <p class="run-note">لا تغلق الصفحة. المقطع الأطول يأخذ وقتاً أطول.</p>
+    </div>
+
+    <!-- Live view of what the pipeline is doing, step by step. -->
+    <details class="live" id="liveBox" hidden open>
+      <summary>
+        <span class="live-dot"></span>
+        ماذا يحدث الآن؟
+        <span class="live-elapsed" id="liveElapsed">0:00</span>
+      </summary>
+      <ol class="live-log" id="liveLog"></ol>
+    </details>
+  </section>
+
+  <!-- ============================== interview ============================== -->
+  <!-- What makes a passage hard is decided by the learner's own words, so they
+       are answered once up front. Answers are saved and prefilled. It stays
+       collapsed once filled, and opens by itself when a job stops to ask. -->
+  <details class="card interview" id="interviewCard">
+    <summary>📋 كيف تريد الشرح؟ <span id="interviewState" class="interview-state"></span></summary>
+
+    <p class="interview-note">
+      هذا يحدد أي الجمل سأشرحها لك. تجاوبها مرة واحدة، وتتحفظ تلقائياً للمرة الجاية.
+    </p>
+
+    <label class="wide">ما الذي تريد أن يفعله المعلم لك؟
+      <textarea id="briefWants" rows="2" placeholder="مثلاً: اشرح كل جملة طويلة، ووضّح الكلمات الجديدة بالأمثلة"></textarea>
+    </label>
+    <label class="wide">ما الذي لا تريد أن يفعله المعلم أبداً؟
+      <textarea id="briefAvoid" rows="2" placeholder="مثلاً: لا تترجم كل كلمة، ولا تطل في الشرح"></textarea>
+    </label>
+
+    <div class="row">
+      <label class="grow">الأسئلة
+        <select id="briefMode">
+          <option value="fixed">أسئلة ثابتة سريعة</option>
+          <option value="ai">الذكاء الاصطناعي يولّد أسئلة من هذا المقطع</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="questionBox"></div>
+
+    <div class="interview-actions">
+      <button class="btn primary" id="interviewDone" hidden>ابدأ الشرح ▶</button>
+      <span class="hint" id="interviewHint"></span>
+    </div>
+  </details>
+
+  <!-- ============================== result ============================== -->
+  <section class="card" id="resultCard" hidden>
+    <h2>✅ الملف جاهز</h2>
+    <div class="player">
+      <audio id="player" controls preload="metadata"></audio>
+      <a id="download" class="btn primary big" download>⬇️ حمّل الملف</a>
+    </div>
+    <div class="stats" id="stats"></div>
+    <details class="lessons">
+      <summary>ما الذي شُرح؟ (<span id="cutCount">0</span>)</summary>
+      <div id="lessons"></div>
+    </details>
+    <button class="btn ghost" id="again">مقطع آخر</button>
+  </section>
+
+  <p class="error" id="error" hidden></p>
+
+  <!-- Shown when a job fails after transcription: the expensive part is saved,
+       so the fix is to change a setting and retry rather than start over. -->
+  <section class="card retry" id="retryCard" hidden>
+    <h2>⚠️ توقّف المقطع قبل اكتماله</h2>
+    <p class="retry-note" id="retryNote"></p>
+    <p class="retry-saved">
+      ✅ <b>النص محفوظ.</b> لم يُفقد شيء من التفريغ — «أعد المحاولة» سيتخطى قراءة الصوت
+      ويبدأ من الخطوة التي توقفت.
+    </p>
+    <div class="retry-actions">
+      <button class="btn primary" id="retryBtn">🔄 أعد المحاولة</button>
+      <button class="btn ghost" id="retrySettings">⚙️ افتح الإعدادات</button>
+      <button class="btn ghost" id="retryCancel">إلغاء</button>
+    </div>
+  </section>
+
+  <!-- ============================= settings ============================= -->
+  <details class="settings" id="settings">
+    <summary>⚙️ الإعدادات</summary>
+
+    <div class="grid">
+      <label>اللغة التي أتعلّمها
+        <input id="targetLanguage" list="langs" />
+      </label>
+      <label>لغة الشرح
+        <input id="nativeLanguage" list="langs" />
+      </label>
+    </div>
+    <p class="hint">مستواك ومقدار التدخّل تحدّدها الخانات بالأعلى.</p>
+
+    <hr />
+
+      <label class="wide">مزود التحليل (OpenAI-compatible)
+        <span class="row">
+          <input id="provider" class="ltr" placeholder="https://openrouter.ai/api/v1" />
+          <button class="btn ghost" id="autoProvider" title="اختر المزود من شكل المفتاح">اكتشف تلقائياً</button>
+        </span>
+      </label>
+      <label class="wide">مفتاح الـAPI
+        <input id="analysisKey" type="password" class="ltr" placeholder="••••••••" />
+        <span class="hint" id="keyOwner"></span>
+      </label>
+      <div class="wide">
+        <span class="row">
+          <label class="grow">الموديل
+            <input id="model" class="ltr" placeholder="أدخل مفتاحك ثم اضغط «جلب الموديلات»" />
+          </label>
+          <button class="btn ghost" id="fetchModels" style="align-self:flex-end">جلب الموديلات</button>
+        </span>
+        <p class="hint" id="modelHint">أدخل المزود والمفتاح، ثم اضغط «جلب الموديلات» لعرض القائمة.</p>
+      </div>
+    </div>
+
+    <!-- Model chooser: the fetched list, shown so the choice is obvious. -->
+    <div class="modelbox" id="modelBox" hidden>
+      <div class="modelbox-head">
+        <b id="modelBoxCount">0 موديل</b>
+        <input id="modelSearch" placeholder="ابحث عن موديل…" />
+        <button class="btn ghost" id="modelClose">إغلاق</button>
+      </div>
+      <div class="modelbox-list" id="modelListBody"></div>
+    </div>
+
+    <p class="hint" id="modelCurrent"></p>
+
+    <hr />
+
+    <div class="grid">
+      <label>صوت الشرح
+        <select id="speechEngine">
+          <option value="free">مجاني (edge-tts)</option>
+          <option value="provider">من المزود (يحتاج مفتاحاً)</option>
+        </select>
+      </label>
+      <label>الصوت
+        <select id="voice"></select>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="replayPassage" />
+        إعادة الجملة الصعبة بعد شرحها
+      </label>
+    </div>
+
+    <div id="providerSpeech" hidden>
+      <div class="grid">
+        <label class="wide">عنوان خدمة الصوت
+          <input id="speechBase" class="ltr" placeholder="https://api.openai.com/v1" />
+        </label>
+        <label class="wide">مفتاح الصوت
+          <input id="speechKey" type="password" class="ltr" placeholder="••••••••" />
+        </label>
+      </div>
+    </div>
+
+    <p class="hint" id="whisperState"></p>
+  </details>
+
+  <datalist id="langs">
+    <option value="id">الإندونيسية</option>
+    <option value="ar">العربية</option>
+    <option value="en">الإنجليزية</option>
+    <option value="tr">التركية</option>
+    <option value="fr">الفرنسية</option>
+    <option value="es">الإسبانية</option>
+    <option value="de">الألمانية</option>
+    <option value="ja">اليابانية</option>
+    <option value="ko">الكورية</option>
+    <option value="zh">الصينية</option>
+    <option value="ru">الروسية</option>
+    <option value="ms">الماليزية</option>
+    <option value="th">التايلاندية</option>
+    <option value="vi">الفيتنامية</option>
+    <option value="hi">الهندية</option>
+    <option value="fa">الفارسية</option>
+    <option value="ur">الأردية</option>
+  </datalist>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

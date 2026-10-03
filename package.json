@@ -1,0 +1,12 @@
+{
+  "name": "voice-tutor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Take a podcast in a language you're learning, get back an edited audio file that pauses, explains in your language, then continues.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tools/test-pipeline.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

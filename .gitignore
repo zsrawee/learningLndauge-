@@ -1,0 +1,8 @@
+﻿node_modules/
+.models/
+data/
+.tmp-tts.mp3
+.env
+npm-debug.log*
+start.cmd
+tools/__pycache__/
